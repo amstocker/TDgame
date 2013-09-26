@@ -12,7 +12,7 @@ RGBtoSTR = {(255,0,0):'R', (0,255,0):'G', (0,0,255):'B'}
 
 
 
-class Bases(Static):
+class Base(Static):
     def render(self, screen, font):
         Static.render(self, screen, font)
         screen.blit(font.render("BASE", False, (0,0,0)), (self.pos[0]-self.w/2+1,self.pos[1]+self.h/2-15))
