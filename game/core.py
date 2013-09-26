@@ -31,7 +31,7 @@ class Agent:
         # units with flying_class = True will only collide with eachother and nothing else
         self.flying_class = False
         
-    def render_agent(self, screen, selected, font):
+    def render_agent(self, screen, selected):
         pygame.draw.circle(screen, (0,0,0), intvec(self.pos), int(self.r)+1)
         if self in selected:
             pygame.draw.circle(screen, self.selected_color, intvec(self.pos), int(self.r))
@@ -53,25 +53,25 @@ class Agent:
             
     def detect_self_collision(self, other):
         d = self.pos.get_distance(other.pos)
-        if d < (self.r+other.r):
-            overlap = (self.r+other.r)-d
+        if d < 1.5*(self.r+other.r):
+            dist = 2*(self.r+other.r)-d
             dir = other.pos - self.pos
-            dir.length = int(overlap)/2
+            dir.length = dist*0.05
             other.pos += dir
             self.pos -= dir
             
     def update(self):
         if len(self.waypoints) > 0:
             dir = self.waypoints[0] - self.pos
-            if dir.length > (self.r+5):
+            if dir.length > (self.r+10):
                 dir.length = self.vmax
                 self.pos += dir
-            elif len(self.waypoints) > 1:
+            elif len(self.waypoints) > 0:
                 if self.loop == True:
                     temp = self.waypoints[0]
                     self.waypoints.append(temp)
                 self.waypoints.pop(0)
-            elif 3 < dir.length <= (self.r+5):
+            elif 2 < dir.length <= (self.r+10):
                 dir.length *= 0.15
                 self.pos += dir
 
@@ -146,12 +146,18 @@ class Projectile:
 
 
 
+class Menu:
+    pass
+
+
+
+
 class Core(PygameHelper):
     def __init__(self):
         # set pygame vars
         self.w, self.h = 1024, 768
         PygameHelper.__init__(self, size=(self.w, self.h), fill=((255,255,255)))
-        self.font=pygame.font.SysFont(None, 20, bold=False, italic=False)
+        self.font=pygame.font.SysFont('Helvetica', 16, bold=False, italic=True)
         
         # mouse cursor
         self.pos = (0,0)
@@ -249,16 +255,16 @@ class Core(PygameHelper):
 
     def update(self):
 ##      **alternate collision detection**        
-##        for a in xrange(len(self.agents)):
-##            for a2 in xrange(a+1, len(self.agents)):
-##                if self.agents[a].flying_class == self.agents[a2].flying_class:
-##                    self.agents[a].detect_self_collision(self.agents[a2])      
-        for a in self.agents:
-            for a2 in self.agents:
-                if a == a2:
-                    continue
-                elif a.flying_class == a2.flying_class:
-                    a.detect_self_collision(a2)
+        for a in xrange(len(self.agents)):
+            for a2 in xrange(a+1, len(self.agents)):
+                if self.agents[a].flying_class == self.agents[a2].flying_class:
+                    self.agents[a].detect_self_collision(self.agents[a2])      
+##        for a in self.agents:
+##            for a2 in self.agents:
+##                if a == a2:
+##                    continue
+##                elif a.flying_class == a2.flying_class:
+##                    a.detect_self_collision(a2)
         for s in self.statics:
             for a in self.agents:
                 a.detect_static_collision(s)
@@ -269,7 +275,7 @@ class Core(PygameHelper):
         for a in self.agents:
             a.render_agent_waypoints(self.screen)
         for a in self.agents:
-            a.render_agent(self.screen, self.selected, self.font)
+            a.render_agent(self.screen, self.selected)
         if self.dragbox_draw == True:
             dim = self.dragbox_pos-self.dragbox_origin
             rect = [self.dragbox_origin[0], self.dragbox_origin[1], dim[0], dim[1]]

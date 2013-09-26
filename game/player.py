@@ -1,48 +1,66 @@
 from core import *
 
 
-# global color dictionaries
-global fill_colors
-global highlight_colors
-global RGBtoSTR
-fill_colors = {'R':(255,0,0), 'G':(0,255,0), 'B':(0,0,255)}
-highlight_colors = {'R':(255,100,100), 'G':(100,255,100), 'B':(100,100,255)}
-RGBtoSTR = {(255,0,0):'R', (0,255,0):'G', (0,0,255):'B'}
+class HQ(Static):
+    def __init__(self):
+        Static.__init__(self, 'rect', (0,0,0), 250, 120)
+        self.hq_img = pygame.image.load('img/HQ.jpeg').convert()
 
+        self.pos = vec2d(582,65)
 
+        # menu display toggle
+        self.display_menu = False
 
-
-class Bases(Static):
+    def update(self, pos, agents, workers):
+        if self.display_menu == True:
+            w = Worker()
+            w.pos = vec2d(self.pos[0], self.pos[1]+60+w.r+10)
+            workers.append(w)
+            agents.append(w)
+            w.waypoints = [vec2d(582, 200)]
+            self.display_menu = False
+            
     def render(self, screen, font):
         Static.render(self, screen, font)
-        screen.blit(font.render("BASE", False, (0,0,0)), (self.pos[0]-self.w/2+1,self.pos[1]+self.h/2-15))
+        screen.blit(self.hq_img, (self.pos[0]-self.w/2, self.pos[1]-self.h/2))
+        pygame.draw.rect(screen, (0,0,0), [(self.pos[0]-self.w/2), (self.pos[1]-self.h/2), self.w, 24])
+        screen.blit(font.render("Headquarters", False, (255,255,255)), (self.pos[0]-self.w/2+148, self.pos[1]-self.h/2+1))
 
 
 
             
-class Resource(Static):
-    def __init__(self, rtype):
-        shape = 'circle'
-        w = 50
-        fill = fill_colors[rtype]
-        border = highlight_colors[rtype]
-        self.rtype = rtype
-        Static.__init__(self, shape, border, w, 0, fill)
+class Ammunition(Static):
+    def __init__(self):
+        Static.__init__(self, 'rect', (0,0,0), 150, 100)
+        self.ammo_img = pygame.image.load('img/bullets.jpeg').convert()
+
+        self.rtype = 'Ammunition'
+        self.color = (247,73,49)
+        self.selected_color = (255,152,97)
+        
+        self.pos = vec2d(375,55)
+        self.inventory = 0
+
+        # menu display toggle
+        self.display_menu = False
         
     def render(self, screen, font):
         Static.render(self, screen, font)
-        screen.blit(font.render(self.rtype, False, (0,0,0)), (self.pos[0]-6, self.pos[1]-7))
-
+        screen.blit(self.ammo_img, (self.pos[0]-self.w/2, self.pos[1]-self.h/2))
+        pygame.draw.rect(screen, (0,0,0), [(self.pos[0]-self.w/2), (self.pos[1]-self.h/2), self.w, 24])
+        screen.blit(font.render("Ammunition", False, (255,255,255)), (self.pos[0]-self.w/2+60, self.pos[1]-self.h/2+1))
+        screen.blit(font.render(str(int(self.inventory)), False, (255,255,255)), (self.pos[0]-self.w/2+1, self.pos[1]-self.h/2+1))
 
 
 
 class Worker(Agent):
     def __init__(self):
-        self.default_color = (150,150,150)
-        self.default_selected_color = (200,200,200)
+        self.default_color = (175,175,175)
+        self.default_selected_color = (225,225,225)
         r = 10
         vmax = 5
         Agent.__init__(self, self.default_color, self.default_selected_color, r, vmax)
+        self.font2 = pygame.font.SysFont('Helvetica', 14, bold=False, italic=False)
 
         self.base_link = []
         self.resource_link = []
@@ -76,21 +94,22 @@ class Worker(Agent):
                 self.carrying = False
                 self.color = self.default_color
                 self.selected_color = self.default_selected_color
-                resource_dict[self.resource_link[0].fill_color] += 1
+                self.resource_link[0].inventory -= 1
                 self.waypoints = [self.resource_link[0].pos]
             if self.carrying == True:
                 self.waypoints = [self.base_link[0].pos]
             if self.resource_link[0].getOverlap(self.pos):
                 self.carrying = True
-                c = RGBtoSTR[self.resource_link[0].fill_color]
-                self.color = fill_colors[c]
-                self.selected_color = highlight_colors[c]
+                self.color =  self.resource_link[0].color
+                self.selected_color = self.resource_link[0].selected_color
                 self.waypoints = [self.base_link[0].pos]
         Agent.update(self)
 
-    def render_agent(self, screen, selected, font):
-        Agent.render_agent(self, screen, selected, font)
-        screen.blit(font.render("W", False, (0,0,0)), (self.pos[0]-6, self.pos[1]-7))
+    def render_agent(self, screen, selected):
+        if len(self.waypoints) > 0:
+            pygame.draw.line(screen, self.color, intvec(self.pos), intvec(self.waypoints[0]), 1)
+        Agent.render_agent(self, screen, selected)
+        screen.blit(self.font2.render("W", False, (0,0,0)), (self.pos[0]-7, self.pos[1]-7))
 
 
 
@@ -101,37 +120,21 @@ class Player(Core):
         # for collision calculations.  Agent class has .flying_class boolean such for which
         # units with flying_class = True will only collide with eachother and nothing else.
         Core.__init__(self)
+        self.bground = pygame.image.load('img/ground_texture.jpeg').convert()
 
         self.workers = []
         self.resources = []
         self.bases = []
-        self.resource_dict = {(255,0,0):0, (0,255,0):0, (0,0,255):0}
-
-        for i in xrange(12):
-            w = Worker()
-            w.pos = vec2d(100+i*30,50)
-            self.agents.append(w)
-            self.workers.append(w)
-
-        r = Resource('R')
-        r.pos = vec2d(400,300)
-        self.statics.append(r)
-        self.resources.append(r)
-
-        r = Resource('G')
-        r.pos = vec2d(500,300)
-        self.statics.append(r)
-        self.resources.append(r)
-
-        r = Resource('B')
-        r.pos = vec2d(600,300)
-        self.statics.append(r)
-        self.resources.append(r)
         
-        b = Base('rect', (0,0,0), 100, 100)
-        b.pos = vec2d(500,500)
-        self.statics.append(b)
-        self.bases.append(b)
+        self.resource_dict = {'Ammunition':0}
+        
+        self.ammo = Ammunition()
+        self.statics.append(self.ammo)
+        self.resources.append(self.ammo)
+
+        self.hq = HQ()
+        self.statics.append(self.hq)
+        self.bases.append(self.hq)
 
     def keyDown(self, key):
         Core.keyDown(self, key)
@@ -141,6 +144,12 @@ class Player(Core):
 
     def mouseUp(self, button, pos):
         Core.mouseUp(self, button, pos)
+        if button == 1:
+            for s in self.statics:
+                if s.getOverlap(pos):
+                    s.display_menu = True
+                else:
+                    s.display_menu = False
         if button == 3:
             # worker gathering link
             for w in self.workers:
@@ -156,14 +165,14 @@ class Player(Core):
                 a.update(self.resource_dict)
             else:
                 a.update()
+        self.hq.update(self.pos, self.agents, self.workers)
+        self.ammo.inventory += 0.05
         Core.update(self)
 
     def draw(self):
-        self.screen.fill((255,255,255))
+        self.screen.blit(self.bground, (0,0))
         Core.draw(self)
-        score = "R: "+str(self.resource_dict[(255,0,0)])+" G: "+str(self.resource_dict[(0,255,0)])+ \
-                " B: "+str(self.resource_dict[(0,0,255)])
-        self.screen.blit(self.font.render(score, False, (0,0,0)), (5,5))
+        #pygame.draw.polygon(self.screen, (0,0,0), [(100,200), (150,300), (100,400)])
 
 
 

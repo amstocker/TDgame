@@ -240,6 +240,9 @@ class vec2d(object):
         return math.sqrt(self.x**2 + self.y**2)    
     def __setlength(self, value):
         length = self.get_length()
+        if length == 0:
+            self.x = self.y = 0
+            return
         self.x *= value/length
         self.y *= value/length
     length = property(get_length, __setlength, None, "gets or sets the magnitude of the vector")
