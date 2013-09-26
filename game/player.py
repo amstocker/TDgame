@@ -12,10 +12,10 @@ RGBtoSTR = {(255,0,0):'R', (0,255,0):'G', (0,0,255):'B'}
 
 
 
-class Base(Static):
+class Bases(Static):
     def render(self, screen, font):
         Static.render(self, screen, font)
-        screen.blit(font.render("BASE", False, (0,0,0)), (self.pos[0]-self.w/2+1,self.pos[1]+self.h/2-13))
+        screen.blit(font.render("BASE", False, (0,0,0)), (self.pos[0]-self.w/2+1,self.pos[1]+self.h/2-15))
 
 
 
@@ -55,12 +55,12 @@ class Worker(Agent):
             if r.getOverlap(pos) == True:
                 resource = True
                 self.resource_link = [r]
-                break
+                return
         for b in bases:
             if b.getOverlap(pos) == True:
                 base = True
                 self.base_link = [b]
-                break
+                return
         if not resource and not base:
             self.base_link = []
             self.resource_link = []
@@ -98,6 +98,8 @@ class Worker(Agent):
 class Player(Core):
     def __init__(self):
         # REMINDER: need to append all statics and agents to self.statics and self.agents
+        # for collision calculations.  Agent class has .flying_class boolean such for which
+        # units with flying_class = True will only collide with eachother and nothing else.
         Core.__init__(self)
 
         self.workers = []

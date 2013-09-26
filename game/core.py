@@ -28,8 +28,7 @@ class Agent:
         # waypoint loop toggle
         self.loop = False
 
-        # this toggle, if True, means that the Agent will ignore Static object collisions and
-        # non-flying class units, but will still collide with other flying class units
+        # units with flying_class = True will only collide with eachother and nothing else
         self.flying_class = False
         
     def render_agent(self, screen, selected, font):
