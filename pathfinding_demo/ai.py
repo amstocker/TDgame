@@ -80,7 +80,7 @@ def Dijkstra(grid, source, target):
             break
         if x[1] == 1000:
             break
-        S.append(x[0])
+        S.insert(0, x[0])
         # for each v near x
         for i in [[1,0], [0,1], [-1,0], [0,-1]]:
             # maxn, maxm are size of grid
