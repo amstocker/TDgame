@@ -4,7 +4,6 @@ from pygame.locals import *
 from vec2d import *
 from math import e, pi, cos, sin, sqrt
 from random import uniform, randint
-from ai import *
 
 # convert vec2d elements into integers (copyright Bill Cauchois 2013)
 def intvec(v):
