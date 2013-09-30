@@ -47,7 +47,10 @@ class Grid:
     def __init__(self, n, m, resolution):
         self.n = n
         self.m = m
-        self.Grid = {(i,j):0 for i in xrange(n) for j in xrange(m)}
+        self.Grid = {}
+        for i in xrange(n):
+            for j in xrange(m):
+                self.Grid[(i,j)] = 0
         self.dx = resolution[0]/n
         self.dy = resolution[1]/m
 
