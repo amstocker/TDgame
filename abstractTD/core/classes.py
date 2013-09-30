@@ -23,6 +23,7 @@ class Agent:
             
     def update(self, grid):
         if self.hp < 0:
+            pass
             # do something
         dir = grid.getCoordinate(self.waypoints[0]) - self.pos
         if dir.length > self.r:
