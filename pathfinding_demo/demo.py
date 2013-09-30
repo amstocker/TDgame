@@ -115,7 +115,7 @@ class Core(PygameHelper):
 
 
 
-
+# minimum distance priority queue
 class BinaryHeap:
     def __init__(self):
         self.heap = [0,[0,-1],[0,-1],[0,-1]]
@@ -216,6 +216,8 @@ def Dijkstra(grid, source, target):
     waypoints = [target]
     p = target
     while p != source:
+        if p == 0:
+            return [source]
         p = D[p][1]
         waypoints.insert(0, p)
     return waypoints
