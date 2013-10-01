@@ -9,31 +9,88 @@ from random import uniform, randint
 def intvec(v):
     return vec2d(int(v[0]), int(v[1]))
 
+# colors
+# frost tower: 102 254 236
+# fire tower: 235 52 82
+# laser tower: 91 52 235
 
 
+# --- MENU CLASSES ---
 
-# --- ENTITY CLASSES ---
+class Menu:
+    def __init__(self, font, show=True):
+        self.show = show
+        self.font = font
+        self.menutext = self.font.render("build", False, (0,0,0))
+
+        # menu scrolling
+        self.scrolling = False
+        self.scroll_pos = 0
+        self.extended = False
+        self.h = 627
+        
+    def getClick(self, pos):
+        if self.extended == False and 132 >= pos[0] >= 0 and 659 >= pos[1] >= self.h-2: #625:
+            self.scrolling = True
+            return True
+        elif self.extended == True and 132 >= pos[0] >= 0 and 659 >= pos[1] >= self.h-2: #527:
+            self.scrolling = True
+            return True
+        else:
+            return False
+        
+    def getHover(self, pos):
+        pass
+    
+    def scroll(self):
+        if self.extended == False:
+            if self.scroll_pos < 99:
+                self.scroll_pos += 11
+            else:
+                self.scrolling = False
+                self.extended = True
+        else:
+            if self.scroll_pos > 0:
+                self.scroll_pos -= 11
+            else:
+                self.scrolling = False
+                self.extended = False
+        self.h = 627-self.scroll_pos
+        
+    def render(self, screen):
+        rect = [1, self.h, 130, 131]
+        rect_outline = [0, self.h-1, 131, 132]
+        pygame.draw.rect(screen, (0,0,0), rect_outline)
+        pygame.draw.rect(screen, (255,255,255), rect)
+        rect_overlap = [1, 627, 130, 31]
+        pygame.draw.rect(screen, (255,255,255), rect_overlap)
+        screen.blit(self.menutext, (5, 629))
+        
+
+
+# --- CREEP CLASSES ---
 
 class Creep:
     def __init__(self, color, r, vmax, hp):
         self.color = color
         self.r = r
         self.vmax = vmax
+        self.maxhp = hp
         self.hp = hp
         self.pos = vec2d(0,0)
         self.waypoints = []
         self.slowed = False
             
     def update(self, grid, creeps, particles_list):
-        if self.hp < 0:
-            for p in xrange(10):
-                rdir = vec2d(uniform(-2,2), uniform(-2,2))
+        if self.hp <= 0:
+            creeps.remove(self)
+            for p in xrange(20):
+                rdir = vec2d(uniform(-5,5), uniform(-5,5))
                 p = Particle()
-                p.color = (255,0,0)
+                p.color = self.color
                 p.pos = (self.pos[0]+randint(-1,1),self.pos[1]+randint(-1,1))
                 p.vel = rdir
                 particles_list.append(p)
-            creeps.remove(self)
         dir = grid.getCoordinate(self.waypoints[0]) - self.pos
         if dir.length > self.r:
             dir.length = self.vmax
@@ -52,38 +109,60 @@ class Creep:
                                  grid.getCoordinate(self.waypoints[i+1]), 1)
         pygame.draw.circle(screen, (0,0,0), intvec(self.pos), int(self.r)+1)
         pygame.draw.circle(screen, self.color, intvec(self.pos), int(self.r))
+        pygame.draw.line(screen, (0,0,0), (self.pos[0]-self.r, self.pos[1]-self.r-5), \
+                         (self.pos[0]+self.r, self.pos[1]-self.r-5), 5)
+        hplossratio = 1-float(self.hp)/self.maxhp
+        pygame.draw.line(screen, (146,252,116), (self.pos[0]-self.r+1, self.pos[1]-self.r-5), \
+                         (self.pos[0]+self.r-(hplossratio*1.8*self.r)-1, self.pos[1]-self.r-5), 3)
 
 
 
+
+# --- TOWER CLASSES ---
 
 class Tower:
     def __init__(self, grid, pos, timer_id, freq):
         self.node = grid.getNode(pos)
         self.pos = grid.getCoordinate(self.node)
+        
+        # timing
         self.freq = freq
-        pygame.time.set_timer(24, self.freq)
+        self.clock = pygame.time.Clock()
+        self.threshold = 0
+        
         self.target = 0
-        self.color = (59,255,121)
+        self.color = (101,255,102)
         self.upgrade = 3
+        self.range = 200
         
     def update(self, particles_list, creeps):
-        if self.target in creeps:
-            p = Projectile(self.pos, self.target, self.upgrade)
-            p.vel = 10
-            p.color = self.color
-            particles_list.append(p)
-            pygame.time.set_timer(24, self.freq)
-        else:
-            self.target = 0
+        self.clock.tick()
+        self.threshold += self.clock.get_time()
+        # if there is no threshold here, it makes like a cool laser effect with lots of particles
+        if self.threshold > self.freq:
+            self.threshold = 0
+            if self.target in creeps:
+                d = self.target.pos - self.pos
+                if d.length <= self.range:
+                    p = Projectile(self.pos, self.target, self.upgrade)
+                    p.vel = 10
+                    p.color = self.color
+                    particles_list.append(p)
+                    pygame.time.set_timer(24, self.freq)
+            else:
+                self.target = 0
             
-    def render(self, screen, grid, rendered_numbers):
+    def render(self, screen, grid):
         c = self.pos
         rect = [c[0]-grid.dx/2, c[1]-grid.dy/2, grid.dx-1, grid.dy-1]
         pygame.draw.rect(screen, self.color, rect)
-        screen.blit(rendered_numbers[self.upgrade], self.pos)
+        for i in xrange(self.upgrade):
+            pygame.draw.line(screen, (0,75,0), (c[0]+6, c[1]+12-4*i), (c[0]+13, c[1]+12-4*i), 2)
 
 
 
+
+# --- PARTICLE CLASSES ---
 
 class Particle:
     def __init__(self):
@@ -91,17 +170,16 @@ class Particle:
         self.pos = vec2d(0,0)
         self.vel = vec2d(0,0)
         self.life = 10
+        
     def update(self, particles, creeps):
         self.pos += self.vel
         self.life -= 1
         if self.life == 0:
             particles.remove(self)
+            
     def render(self, screen):
         pygame.draw.circle(screen, self.color, (int(self.pos[0]-1),int(self.pos[1]-1)), 2)
         
-        
-
-
 
 class Projectile:
     def __init__(self, pos, target, upgrade):
@@ -115,8 +193,9 @@ class Projectile:
     def update(self, particles_list, creeps):
         if self.target in creeps:
             self.dir = self.target.pos - self.pos
-            if self.dir.length < self.target.r:
-                self.target.hp -= 1
+            if self.dir.length < 1.5*self.target.r:
+                if self.target.hp >= 0:
+                    self.target.hp -= 1
                 particles_list.remove(self)
             self.dir.length = self.vel
             self.pos += self.dir
@@ -142,6 +221,10 @@ class Grid:
                 self.Grid[(i,j)] = 0
         self.dx = resolution[0]/n
         self.dy = resolution[1]/m
+
+    def checkNode(self, pos):
+        p = self.getNode(pos)
+        return self.Grid[p]
 
     def getNode(self, v):
         v = intvec(v)
@@ -266,12 +349,18 @@ class Core(PygameHelper):
         self.background = pygame.image.load('img/abstract.jpg').convert()
         # init grid
         self.grid = Grid(20, 20, (self.w+1,self.h+1))
+        # set grid where menu is to be occupied
+        self.grid.Grid[(0,19)] = 1
+        self.grid.Grid[(1,19)] = 1
+        self.grid.Grid[(2,19)] = 1
+        self.grid.Grid[(3,19)] = 1
         # pre-render numbers
         self.font = pygame.font.SysFont('Helvetica', 14, bold=False, italic=False)
+        self.font2 = pygame.font.SysFont('Helvetica', 28, bold=True, italic=False)
         self.rendered_numbers = [0]
         for i in xrange(1,100):
             f = self.font.render(str(i), False, (0,0,0))
-            self.rendered_numbers.append(f)
+            self.rendered_numbers.append(f) 
 
     def keyDown(self, key):
         pass

@@ -6,20 +6,13 @@ from core.classes import *
 class TD(Core):
     def __init__(self):
         Core.__init__(self)
-        # initialize agent with random target
-        first = Creep((0,0,0), 10, 6, 100)
-        v = (randint(0,10), randint(0,10))
-        first.waypoints = Dijkstra(self.grid, self.grid.getNode(first.pos), v)
-        
+        self.menu = Menu(self.font2)       
+
         self.particles = []
         self.towers = []
-        self.creeps = [first]
-
-        self.nocreeps = False
-    
-    def userEvent(self):
-        for t in self.towers:
-            t.update(self.particles, self.creeps)
+        self.creeps = []
+        self.creep_path = Dijkstra(self.grid, (0,0), (10,10))
+        self.nocreeps = True
     
     def mouseDown(self, button, pos):
         if button == 3:
@@ -28,25 +21,34 @@ class TD(Core):
     
     def mouseUp(self, button, pos):
         if button == 1:
-            t = Tower(self.grid, pos, 24+len(self.towers), 1000)
-            self.towers.append(t)
-            node = self.grid.getNode(pos)
-            self.grid.insert(node, 1)
+            if self.menu.getClick(pos) == False:
+                node = self.grid.getNode(pos)
+                if self.grid.Grid[node] == 0:
+                    self.grid.insert(node, 1)
+                    t = Tower(self.grid, pos, len(self.towers), 1000)
+                    self.towers.append(t)
+                    for c in self.creeps:
+                        c.waypoints = Dijkstra(self.grid, self.grid.getNode(c.pos), (10,10))
+                
         
     def mouseMotion(self, buttons, pos, rel):
-        if buttons[0] == 1 and len(self.creeps) > 0:
-            t = Tower(self.grid, pos, 24+len(self.towers), 1000)
-            t.target = self.creeps[0]
-            self.towers.append(t)
-            node = self.grid.getNode(pos)
-            self.grid.insert(node, 1)
+        self.menu.getHover(pos)
+##        if buttons[0] == 1 and len(self.creeps) > 0:
+##            node = self.grid.getNode(pos)
+##            if self.grid.Grid[node] == 0:
+##                self.grid.insert(node, 1)
+##                t = Tower(self.grid, pos, len(self.towers), 1000)
+##                t.target = self.creeps[0]
+##                self.towers.append(t)
+            
 
     def update(self):
+        if self.menu.scrolling == True:
+            self.menu.scroll()
         if self.nocreeps == True:
             self.nocreeps = False
-            C = Creep((0,0,0), 10, 6, 100)
-            v = (randint(0,10), randint(0,10))
-            C.waypoints = Dijkstra(self.grid, self.grid.getNode(C.pos), v)
+            C = Creep((randint(0,255), randint(0,255), randint(0,255)), 10, 6, 50)
+            C.waypoints = Dijkstra(self.grid, (0,0), (10,10))
             self.creeps.append(C)
         if len(self.creeps) == 0 and self.nocreeps == False:
             self.nocreeps = True
@@ -55,6 +57,8 @@ class TD(Core):
                 t.target = self.creeps[0]
             for c in self.creeps:
                 c.update(self.grid, self.creeps, self.particles)
+        for t in self.towers:
+            t.update(self.particles, self.creeps)
         for p in self.particles:
             p.update(self.particles, self.creeps)
 
@@ -63,9 +67,10 @@ class TD(Core):
         for c in self.creeps:
             c.render(self.screen, self.grid)
         for t in self.towers:
-            t.render(self.screen, self.grid, self.rendered_numbers)
+            t.render(self.screen, self.grid)
         for p in self.particles:
             p.render(self.screen)
+        self.menu.render(self.screen)
 
 TD = TD()
 TD.mainLoop(40)

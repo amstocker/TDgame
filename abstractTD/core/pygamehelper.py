@@ -12,6 +12,7 @@ class PygameHelper:
         self.clock = pygame.time.Clock() #to track FPS
         self.size = size
         self.fps= 0
+        self.pos = (0,0)
         
     def handleEvents(self):
         for event in pygame.event.get():
@@ -29,7 +30,7 @@ class PygameHelper:
                 self.mouseUp(event.button, event.pos)
             elif event.type == MOUSEMOTION:
                 self.mouseMotion(event.buttons, event.pos, event.rel)
-            elif event.type == USEREVENT:
+            elif event.type >= USEREVENT:
                 self.userEvent()
     
     #wait until a key is pressed, then return
@@ -74,8 +75,8 @@ class PygameHelper:
         pass
         
     def mouseMotion(self, buttons, pos, rel):
-        pass
+        self.pos = pos
 
-    def userEvent(self, timer_id):
+    def userEvent(self):
         pass
         
