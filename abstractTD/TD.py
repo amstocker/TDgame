@@ -8,11 +8,20 @@ class TD(Core):
         Core.__init__(self)
         self.menu = Menu(self.font2)       
 
+        # tower data
         self.particles = []
         self.towers = []
+
+        # creep data
         self.creeps = []
         self.creep_path = Dijkstra(self.grid, (0,0), (10,10))
         self.nocreeps = True
+        self.creep_spawn_clock = pygame.time.Clock()
+        self.spawn_threshold = 0
+        self.spawn_frequency = 2000
+
+        # score
+        self.score = 0
     
     def mouseDown(self, button, pos):
         if button == 3:
@@ -25,7 +34,7 @@ class TD(Core):
                 node = self.grid.getNode(pos)
                 if self.grid.Grid[node] == 0:
                     self.grid.insert(node, 1)
-                    t = Tower(self.grid, pos, len(self.towers), 1000)
+                    t = Tower(self.grid, pos, 1000)
                     self.towers.append(t)
                     for c in self.creeps:
                         c.waypoints = Dijkstra(self.grid, self.grid.getNode(c.pos), (10,10))
@@ -37,26 +46,34 @@ class TD(Core):
 ##            node = self.grid.getNode(pos)
 ##            if self.grid.Grid[node] == 0:
 ##                self.grid.insert(node, 1)
-##                t = Tower(self.grid, pos, len(self.towers), 1000)
+##                t = Tower(self.grid, pos, 1000)
 ##                t.target = self.creeps[0]
 ##                self.towers.append(t)
             
 
     def update(self):
+        self.spawn_frequency = 2000-self.score
+        self.creep_spawn_clock.tick()
+        self.spawn_threshold += self.creep_spawn_clock.get_time()
         if self.menu.scrolling == True:
             self.menu.scroll()
         if self.nocreeps == True:
             self.nocreeps = False
-            C = Creep((randint(0,255), randint(0,255), randint(0,255)), 10, 6, 50)
-            C.waypoints = Dijkstra(self.grid, (0,0), (10,10))
-            self.creeps.append(C)
-        if len(self.creeps) == 0 and self.nocreeps == False:
+            # need to figure out a way when spawning multiple creeps, or when building,
+            # for how to easily keep a variable pathway but keep creeps on it at all times.
+            # i'm thinking that it would be possible to find the node clicked on for building,
+            # and just find the best pathing from eitherside of it and then slice everything together.
+            self.spawnRandomCreep()
+        elif self.spawn_threshold > self.spawn_frequency:
+            self.spawn_threshold = 0
+            self.spawnRandomCreep()
+        if len(self.creeps) == 0:
             self.nocreeps = True
         if self.nocreeps == False:
             for t in self.towers:
                 t.target = self.creeps[0]
             for c in self.creeps:
-                c.update(self.grid, self.creeps, self.particles)
+                c.update(self.grid, self.creeps, self.particles, self.score)
         for t in self.towers:
             t.update(self.particles, self.creeps)
         for p in self.particles:
@@ -64,10 +81,10 @@ class TD(Core):
 
     def draw(self):
         self.screen.blit(self.background, (0,0))
+        for t in self.towers:
+            t.render(self.screen)
         for c in self.creeps:
             c.render(self.screen, self.grid)
-        for t in self.towers:
-            t.render(self.screen, self.grid)
         for p in self.particles:
             p.render(self.screen)
         self.menu.render(self.screen)
