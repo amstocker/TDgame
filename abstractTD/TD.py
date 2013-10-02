@@ -32,31 +32,32 @@ class TD(Core):
         if button == 1:
             if self.menu.getClick(pos) == False:
                 node = self.grid.getNode(pos)
-                if self.grid.Grid[node] == 0:
+                # can't build on space station
+                if node[1] > 15 and node[0] > 15:
+                    pass
+                elif self.grid.Grid[node] == 0:
                     self.grid.insert(node, 1)
-                    t = Tower(self.grid, pos, 1000)
-                    self.towers.append(t)
+                    if self.menu.selected == self.menu.item4:
+                        l = LaserTower(self.grid, pos)
+                        self.towers.append(l)
+                    elif self.menu.selected == self.menu.item3:
+                        f = FireTower(self.grid, pos)
+                        self.towers.append(f)
+                    else:
+                        d = DefaultTower(self.grid, pos)
+                        self.towers.append(d)
+                    # splice path?
                     for c in self.creeps:
-                        c.waypoints = Dijkstra(self.grid, self.grid.getNode(c.pos), (10,10))
+                        c.waypoints = Dijkstra(self.grid, self.grid.getNode(c.pos), (17,17))
                 
-        
     def mouseMotion(self, buttons, pos, rel):
         self.menu.getHover(pos)
-##        if buttons[0] == 1 and len(self.creeps) > 0:
-##            node = self.grid.getNode(pos)
-##            if self.grid.Grid[node] == 0:
-##                self.grid.insert(node, 1)
-##                t = Tower(self.grid, pos, 1000)
-##                t.target = self.creeps[0]
-##                self.towers.append(t)
-            
 
     def update(self):
+        # update creep spawn
         self.spawn_frequency = 2000-self.score
         self.creep_spawn_clock.tick()
         self.spawn_threshold += self.creep_spawn_clock.get_time()
-        if self.menu.scrolling == True:
-            self.menu.scroll()
         if self.nocreeps == True:
             self.nocreeps = False
             # need to figure out a way when spawning multiple creeps, or when building,
@@ -69,9 +70,12 @@ class TD(Core):
             self.spawnRandomCreep()
         if len(self.creeps) == 0:
             self.nocreeps = True
+        # update menu
+        self.menu.update()
+        if self.menu.scrolling == True:
+            self.menu.scroll()
+        # update towers and particles
         if self.nocreeps == False:
-            for t in self.towers:
-                t.target = self.creeps[0]
             for c in self.creeps:
                 c.update(self.grid, self.creeps, self.particles, self.score)
         for t in self.towers:
