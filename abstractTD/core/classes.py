@@ -137,7 +137,6 @@ class Creep:
             
     def update(self, grid, creeps, particles_list, score):
         if self.hp <= 0:
-            score += 1
             creeps.remove(self)
             for p in xrange(20):
                 rdir = vec2d(uniform(-3,3), uniform(-3,3))
@@ -147,6 +146,7 @@ class Creep:
                 p.origin = (self.pos[0], self.pos[1])
                 p.vel = rdir
                 particles_list.append(p)
+            score += 1
         dir = grid.getCoordinate(self.waypoints[0]) - self.pos
         if dir.length > self.r:
             dir.length = self.vmax
@@ -157,13 +157,14 @@ class Creep:
             dir.length = self.vmax
             self.pos += dir
 
-    def render(self, screen, grid):
+    def render(self, screen, grid, show_waypoints):
         # waypoints
-        for i in xrange(len(self.waypoints)):
-            pygame.draw.circle(screen, self.color, grid.getCoordinate(self.waypoints[i]), 5, 1)
-            if i+1 < len(self.waypoints):
-                pygame.draw.line(screen, self.color, grid.getCoordinate(self.waypoints[i]), \
-                                 grid.getCoordinate(self.waypoints[i+1]), 1)
+        if show_waypoints == True:
+            for i in xrange(len(self.waypoints)):
+                pygame.draw.circle(screen, self.color, grid.getCoordinate(self.waypoints[i]), 5, 1)
+                if i+1 < len(self.waypoints):
+                    pygame.draw.line(screen, self.color, grid.getCoordinate(self.waypoints[i]), \
+                                     grid.getCoordinate(self.waypoints[i+1]), 1)
         # creep
         pygame.draw.circle(screen, (0,0,0), intvec(self.pos), int(self.r)+1)
         pygame.draw.circle(screen, self.color, intvec(self.pos), int(self.r))
@@ -200,6 +201,7 @@ class Tower:
 
         self.inrange = False
         self.firing = False
+        self.blink = False
 
         # self.c = topleft corner of coordinate
         self.c = (self.pos[0]-grid.dx/2+2, self.pos[1]-grid.dy/2+2)
@@ -212,6 +214,11 @@ class Tower:
         # perhaps use with slight randint variation in a cool blue/purple color?
         if self.threshold > self.freq:
             self.firing = True
+            # blink animation
+        if self.firing == True:
+            self.blink = True
+        else:
+            self.blink = False
         if self.inrange == False:
             for c in creeps:
                 d = c.pos - self.pos
@@ -230,6 +237,8 @@ class Tower:
                         p.vel = 10
                         p.color = self.projectile_color
                         particles_list.append(p)
+                else:
+                    self.inrange = False
             else:
                 self.inrange = False
             
@@ -241,7 +250,7 @@ class DefaultTower(Tower):
     def __init__(self, grid, pos):
         Tower.__init__(self, grid, pos)
     def update(self, particles_list, creeps):
-        if self.inrange == True and self.firing == True:
+        if self.blink == True:
             self.color = (200,255,200)
         else:
             self.color = (101,255,102)
@@ -277,6 +286,12 @@ class FireTower(Tower):
         self.projectile_size = 8
         self.projectile_color = (235,150,180)
         self.projectile_shape = 'ball'
+    def update(self, particles_list, creeps):
+        if self.blink == True:
+            self.color = (255,200,200)
+        else:
+            self.color = (235,52,82)
+        Tower.update(self, particles_list, creeps)
         
 
 
@@ -315,16 +330,13 @@ class Projectile:
         self.shape = shape
         
     def update(self, particles_list, creeps):
-        if self.target in creeps:
-            self.dir = self.target.pos - self.pos
-            if self.dir.length < 1.5*self.target.r:
-                if self.target.hp >= 0:
-                    self.target.hp -= self.dmg
-                particles_list.remove(self)
-            self.dir.length = self.vel
-            self.pos += self.dir
-        else:
+        self.dir = self.target.pos - self.pos
+        if self.dir.length < 1.5*self.target.r:
+            if self.target.hp >= 0:
+                self.target.hp -= self.dmg
             particles_list.remove(self)
+        self.dir.length = self.vel
+        self.pos += self.dir
         
     def render(self, screen):
         if self.shape == 'line':
@@ -335,7 +347,7 @@ class Projectile:
 
 
 
-# --- DATA CLASSES ---
+# --- DATA HANDLING ---
 
 class Grid:
     # n across, m down

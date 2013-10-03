@@ -13,14 +13,15 @@ class TD(Core):
         self.towers = []
 
         # creep data
+        self.show_waypoints = True
         self.creeps = []
         self.creep_path = Dijkstra(self.grid, (0,0), (10,10))
         self.nocreeps = True
         self.creep_spawn_clock = pygame.time.Clock()
         self.spawn_threshold = 0
-        self.spawn_frequency = 2000
+        self.spawn_frequency = 500
 
-        # score
+        # score (won't work yet?)
         self.score = 0
     
     def mouseDown(self, button, pos):
@@ -55,7 +56,6 @@ class TD(Core):
 
     def update(self):
         # update creep spawn
-        self.spawn_frequency = 2000-self.score
         self.creep_spawn_clock.tick()
         self.spawn_threshold += self.creep_spawn_clock.get_time()
         if self.nocreeps == True:
@@ -83,12 +83,16 @@ class TD(Core):
         for p in self.particles:
             p.update(self.particles, self.creeps)
 
+    def keyUp(self, key):
+        if key == K_w:
+            self.show_waypoints = not self.show_waypoints
+
     def draw(self):
         self.screen.blit(self.background, (0,0))
         for t in self.towers:
             t.render(self.screen)
         for c in self.creeps:
-            c.render(self.screen, self.grid)
+            c.render(self.screen, self.grid, self.show_waypoints)
         for p in self.particles:
             p.render(self.screen)
         self.menu.render(self.screen)
