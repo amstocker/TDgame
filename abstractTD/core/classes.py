@@ -136,12 +136,20 @@ class Creep:
         self.slowed = False
             
     def update(self, grid, creeps, particles_list, score):
+        if self.slowed == True:
+            v = 0.3*self.vmax
+        else:
+            v = self.vmax
         if self.hp <= 0:
             creeps.remove(self)
             for p in xrange(20):
-                rdir = vec2d(uniform(-3,3), uniform(-3,3))
+                rdir = vec2d(uniform(-8, 8), uniform(-8, 8))
                 p = Particle()
-                p.color = self.color
+                r = randint(0, 1)
+                if r == 0:
+                    p.color = self.color
+                else:
+                    p.color = (255, 255, 255)
                 p.pos = (self.pos[0]+randint(-1,1),self.pos[1]+randint(-1,1))
                 p.origin = (self.pos[0], self.pos[1])
                 p.vel = rdir
@@ -149,12 +157,12 @@ class Creep:
             score += 1
         dir = grid.getCoordinate(self.waypoints[0]) - self.pos
         if dir.length > self.r:
-            dir.length = self.vmax
+            dir.length = v
             self.pos += dir
         elif len(self.waypoints) > 1:
             self.waypoints.pop(0)
         elif 3 < dir.length <= self.r:
-            dir.length = self.vmax
+            dir.length = v
             self.pos += dir
 
     def render(self, screen, grid, show_waypoints):
@@ -196,6 +204,7 @@ class Tower:
         self.range = 200
         self.projectile_dmg = 10
         self.projectile_size = 3
+        self.projectile_vel = 10
         self.projectile_color = (151,255,152)
         self.projectile_shape = 'line'
 
@@ -210,8 +219,6 @@ class Tower:
     def update(self, particles_list, creeps):
         self.clock.tick()
         self.threshold += self.clock.get_time()
-        # if there is no threshold here, it makes like a cool laser effect with lots of particles,
-        # perhaps use with slight randint variation in a cool blue/purple color?
         if self.threshold > self.freq:
             self.firing = True
             # blink animation
@@ -234,7 +241,7 @@ class Tower:
                         self.firing = False
                         self.threshold = 0
                         p = Projectile(self.pos, self.target, self.projectile_dmg, self.projectile_size, self.projectile_shape)
-                        p.vel = 10
+                        p.vel = self.projectile_vel
                         p.color = self.projectile_color
                         particles_list.append(p)
                 else:
@@ -249,11 +256,80 @@ class Tower:
 class DefaultTower(Tower):
     def __init__(self, grid, pos):
         Tower.__init__(self, grid, pos)
+        
     def update(self, particles_list, creeps):
         if self.blink == True:
             self.color = (200,255,200)
         else:
             self.color = (101,255,102)
+        Tower.update(self, particles_list, creeps)
+
+
+class SlowTower:
+    def __init__(self, grid, pos, freq=1000):
+        self.node = grid.getNode(pos)
+        self.pos = grid.getCoordinate(self.node)
+        
+        self.color = (102,254,236)
+        self.field_color = (102,254,236)
+        self.range = 40
+
+        self.targets = []
+        self.phase = 4
+
+        self.c = (self.pos[0]-grid.dx/2+2, self.pos[1]-grid.dy/2+2)
+        self.rect = [self.c[0], self.c[1], grid.dx-5, grid.dy-5]
+
+        self.surf = pygame.Surface((80, 80))
+        self.surf.fill((0,0,0))
+        self.surf.set_colorkey((0,0,0))
+        self.surf.set_alpha(100)
+        
+    def update(self, particles_list, creeps):
+        self.field_color = (
+            (self.field_color[0]+self.phase)%256,
+            (self.field_color[1]-self.phase)%256,
+            (self.field_color[2]-self.phase)%256
+            )
+        for c in creeps:
+            d = c.pos - self.pos
+            if d.length <= self.range and c not in self.targets:
+                self.targets.append(c)
+        for t in self.targets:
+            if t in creeps:
+                d = t.pos - self.pos
+                if d.length <= self.range:
+                    t.slowed = True
+                else:
+                    t.slowed = False
+                    self.targets.remove(t)
+            else:
+                self.targets.remove(t)
+    
+    def render(self, screen):
+        self.surf.fill((0,0,0))
+        pygame.draw.circle(self.surf, self.field_color,(40,40), 40)
+        screen.blit(self.surf, (self.pos[0]-40, self.pos[1]-40))
+        pygame.draw.rect(screen, self.color, self.rect)
+
+
+class FireTower(Tower):
+    def __init__(self, grid, pos):
+        Tower.__init__(self, grid, pos)
+        self.color = (235,52,82)
+        self.freq = 2500
+        self.range = 350
+        self.projectile_dmg = 50
+        self.projectile_size = 10
+        self.projectile_vel = 4
+        self.projectile_color = (235,52,82)
+        self.projectile_shape = 'explosive'
+        
+    def update(self, particles_list, creeps):
+        if self.blink == True:
+            self.color = (255,200,200)
+        else:
+            self.color = (235,52,82)
         Tower.update(self, particles_list, creeps)
 
 
@@ -274,24 +350,6 @@ class LaserTower(Tower):
         else:
             self.color = (91,52,235)
         Tower.update(self, particles_list, creeps)
-
-
-class FireTower(Tower):
-    def __init__(self, grid, pos):
-        Tower.__init__(self, grid, pos)
-        self.color = (235,52,82)
-        self.freq = 2500
-        self.range = 350
-        self.projectile_dmg = 50
-        self.projectile_size = 8
-        self.projectile_color = (235,150,180)
-        self.projectile_shape = 'ball'
-    def update(self, particles_list, creeps):
-        if self.blink == True:
-            self.color = (255,200,200)
-        else:
-            self.color = (235,52,82)
-        Tower.update(self, particles_list, creeps)
         
 
 
@@ -308,6 +366,7 @@ class Particle:
         self.life = randint(20,50)
         
     def update(self, particles, creeps):
+        self.vel *= 0.95
         self.pos += self.vel
         self.life -= 1
         if self.life == 0:
@@ -315,7 +374,7 @@ class Particle:
             
     def render(self, screen):
         pygame.draw.line(screen, self.color, self.origin, self.pos, 1)
-        pygame.draw.circle(screen, self.color, (int(self.pos[0]-1),int(self.pos[1]-1)), 2)
+        pygame.draw.circle(screen, self.color, (int(self.pos[0]),int(self.pos[1])), 2)
         
 
 class Projectile:
@@ -328,21 +387,28 @@ class Projectile:
         self.dmg = dmg
         self.size = size
         self.shape = shape
+        self.contact = False
         
     def update(self, particles_list, creeps):
+        if self.contact == True:
+            particles_list.remove(self)
         self.dir = self.target.pos - self.pos
         if self.dir.length < 1.5*self.target.r:
+            self.contact = True
             if self.target.hp >= 0:
                 self.target.hp -= self.dmg
-            particles_list.remove(self)
         self.dir.length = self.vel
         self.pos += self.dir
         
     def render(self, screen):
         if self.shape == 'line':
             pygame.draw.line(screen, self.color, self.pos, self.pos+self.dir, 1+self.size)
-        if self.shape == 'ball':
-            pygame.draw.circle(screen, self.color, intvec(self.pos), self.size)
+        elif self.shape == 'explosive':
+            if self.contact == True:
+                pygame.draw.circle(screen, (255,246,150), intvec(self.pos), self.size+20)
+            else:
+                pygame.draw.circle(screen, (0,0,0), intvec(self.pos), self.size-3)
+                pygame.draw.circle(screen, (200,200,200), intvec(self.pos), self.size-4)
     
 
 
@@ -505,9 +571,29 @@ class Core(PygameHelper):
         self.target_blocked = False
             
     def spawnRandomCreep(self):
-        C = Creep((randint(220,255), randint(0,50), randint(50,100)), 10, 4, 100)
+##          possible colorations:
+##        C = Creep((randint(220,255), randint(0,50), randint(50,100)), 10, 4, 100)
+##          or
+##        permutations = [
+##            (255, 150, 0),
+##            (255, 0, 150),
+##            (150, 255, 0),
+##            (150, 0, 255),
+##            (0, 255, 150),
+##            (0, 150, 255)
+##            ]
+        permutations = [
+            (117, 172, 255),
+            (117, 255, 172),
+            (172, 117, 255),
+            (172, 255, 117),
+            (255, 117, 172),
+            (255, 172, 117)
+            ]
+        x = randint(0,5)
+        C = Creep(permutations[x], 10, 4, 100)
         side = randint(0,1)
-        pos = (side*randint(0,9),(1-side)*randint(0,9))
+        pos = (side*randint(1,9),(1-side)*randint(1,9))
         C.pos = self.grid.getCoordinate(pos)
         target = 0
         for i in [0, 1]:
